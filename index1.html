@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Khu Vực Riêng Tư</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      padding: 20px;
+      margin: 0;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .video-grid {
+      display: none; /* Ẩn khi chưa mở khóa */
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .video-card {
+      background: #1e1e1e;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    }
+    .video-title {
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: bold;
+      border-bottom: 1px solid #333;
+    }
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #000;
+    }
+    .video-thumbnail {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    .video-wrapper:hover .video-thumbnail {
+      transform: scale(1.05);
+    }
+    .play-button {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 2px solid #fff;
+      transition: all 0.3s ease;
+      z-index: 2;
+    }
+    .play-button::before {
+      content: '';
+      border-style: solid;
+      border-width: 12px 0 12px 20px;
+      border-color: transparent transparent transparent #fff;
+      margin-left: 4px;
+    }
+    .video-wrapper:hover .play-button {
+      background: rgba(229, 9, 20, 0.9);
+      transform: scale(1.1);
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    #lockScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #121212;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+    .lock-box {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+      width: 90%;
+      max-width: 320px;
+    }
+    .lock-box input {
+      width: 100%;
+      padding: 12px;
+      margin: 15px 0;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #2a2a2a;
+      color: #fff;
+      font-size: 16px;
+      text-align: center;
+    }
+    .lock-box button {
+      width: 100%;
+      padding: 12px;
+      background: #0070f3;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #errorMsg {
+      color: #ff4d4f;
+      margin-top: 10px;
+      font-size: 14px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Màn hình khóa -->
+  <div id="lockScreen">
+    <div class="lock-box">
+      <h2>🔒 Nhập Mật Khẩu</h2>
+      <input type="password" id="passwordInput" placeholder="Nhập mật khẩu...">
+      <button onclick="checkPassword()">Mở Khóa</button>
+      <div id="errorMsg">Mật khẩu không chính xác!</div>
+    </div>
+  </div>
+
+  <!-- Nội dung chính -->
+  <h1>🎬 Danh Sách Video</h1>
+  <div id="videoGrid" class="video-grid"></div>
+
+  <script>
+    // 🔑 Đặt mật khẩu truy cập tại đây
+    const CORRECT_PASSWORD = "123";
+
+    // 📺 Danh sách 9 video được tích hợp sẵn
+    const videoList = [
+      { embed: "https://veev.to/e/28v5X7OY727cMHOHBJ8UpktTCv5blE2dHt38BQW", thumbnail: "" },
+      { embed: "https://veev.to/e/25DVjsx5h6uMpiA1DkFp4UOmGHEYVBSv1Er8343", thumbnail: "" },
+      { embed: "https://veev.to/e/218egmavOkvjWkwntT4Fvg4lSTFzN9pnQHW1B6v", thumbnail: "" },
+      { embed: "https://veev.to/e/d3SNH4dssKGQfvIezFrAsmlWJ51rG6BuOh583t", thumbnail: "" },
+      { embed: "https://veev.to/e/2D3M1SXSr7ce1MXd64rkXKQxjlYqx244d2ztfHN", thumbnail: "" },
+      { embed: "https://veev.to/e/2HldSXdUlY3yMiFwDkZiNK3xt3VF9qwmWAlr4bP", thumbnail: "" },
+      { embed: "https://veev.to/e/YwbQtpI28mScmlhlwMy1zZqGkE1mrlwWKIV7w3", thumbnail: "" },
+      { embed: "https://veev.to/e/2Dh4EncIpFUk6QllwCcVdiuguXwFJe94MCNITt5", thumbnail: "" },
+      { embed: "https://veev.to/e/22NU9KQFcld3OJN7eedewxg3a3On1hGrjMKbuXI", thumbnail: "" }
+    ];
+
+    // Hỗ trợ bấm phím Enter khi gõ mật khẩu
+    document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') checkPassword();
+    });
+
+    function checkPassword() {
+      const input = document.getElementById('passwordInput').value;
+      const error = document.getElementById('errorMsg');
+
+      if (input === CORRECT_PASSWORD) {
+        document.getElementById('lockScreen').style.display = 'none';
+        document.getElementById('videoGrid').style.display = 'grid';
+        renderVideos();
+      } else {
+        error.style.display = 'block';
+        document.getElementById('passwordInput').value = '';
+      }
+    }
+
+    function renderVideos() {
+      const container = document.getElementById('videoGrid');
+      container.innerHTML = '';
+
+      videoList.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        // Nếu không có link ảnh, dùng một ảnh nền màu tối mặc định
+        const thumbSrc = item.thumbnail || `https://via.placeholder.com/400x225/222222/ffffff?text=Tập+${index + 1}`;
+
+        card.innerHTML = `
+          <div class="video-title">Tập ${index + 1}</div>
+          <div class="video-wrapper" onclick="playVideo(this, '${item.embed}')">
+            <img src="${thumbSrc}" class="video-thumbnail" alt="Tập ${index + 1}" loading="lazy">
+            <div class="play-button"></div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function playVideo(wrapper, embedUrl) {
+      const iframe = document.createElement('iframe');
+      iframe.src = embedUrl + (embedUrl.includes('?') ? '&' : '?') + 'autoplay=1';
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('allow', 'autoplay; fullscreen');
+      wrapper.innerHTML = '';
+      wrapper.appendChild(iframe);
+      wrapper.removeAttribute('onclick');
+      wrapper.style.cursor = 'default';
+    }
+  </script>
+</body>
+</html>
